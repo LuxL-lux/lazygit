@@ -250,7 +250,7 @@ var tests = []*components.IntegrationTest{
 	filter_by_path.SelectFilteredFileWhenEnteringCommitNoRootItem,
 	filter_by_path.ShowDiffsForRenamedFile,
 	filter_by_path.TypeFile,
-	hooks.CommitHooks,
+	hooks.ActionHooks,
 	interactive_rebase.AdvancedInteractiveRebase,
 	interactive_rebase.AmendCommitWithConflict,
 	interactive_rebase.AmendFirstCommit,

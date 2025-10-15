@@ -1202,12 +1202,15 @@ finish, every non-empty `after` command runs.
 
 ### Available Fields
 
-| Field    | Description |
-|----------|-------------|
-| `context` | Name of the context/panel where the hook applies. Use one of `status`, `files`, `worktrees`, `localBranches`, `remotes`, `remoteBranches`, `tags`, `commits`, `reflogCommits`, `subCommits`, `commitFiles`, `stash`, or `global`. Leave empty to match any context. |
-| `key`     | Key label that triggers the action (e.g. `c`, `P`, `enter`, `ctrl+p`). Use the same labels that appear in the keybinding config/cheatsheet. |
-| `before`  | Shell command executed before Lazygit runs the action. If the command exits with a non-zero status, Lazygit shows the error and the action is cancelled. |
-| `after`   | Shell command executed after the action completes successfully. Lazygit waits for any in-progress tasks (`WithInlineStatus`, `WithWaitingStatus`, subprocesses, etc.) to finish before running these commands. |
+| Field            | Description |
+|------------------|-------------|
+| `context`        | Name of the context/panel where the hook applies. Use one of `status`, `files`, `worktrees`, `localBranches`, `remotes`, `remoteBranches`, `tags`, `commits`, `reflogCommits`, `subCommits`, `commitFiles`, `stash`, or `global`. Leave empty to match any context. |
+| `key`            | Key label that triggers the action (e.g. `c`, `P`, `enter`, `ctrl+p`). Use the same labels that appear in the keybinding config/cheatsheet. |
+| `before`         | Shell command executed before Lazygit runs the action. If the command exits with a non-zero status, Lazygit shows the error and the action is cancelled. |
+| `after`          | Shell command executed after the action completes successfully. Lazygit waits for any in-progress tasks (`WithInlineStatus`, `WithWaitingStatus`, subprocesses, etc.) to finish before running these commands. |
+| `logOutput`      | Set to `true` to log the hook command in Lazygit’s command log. Default is `false` (suppressed). |
+| `abortOnSuccess` | Set to `true` to cancel the Lazygit action even when the hook command succeeds. Useful for guard rails or validations. |
+| `abortMessage`   | Optional message shown when `abortOnSuccess` is `true`. If omitted, Lazygit displays a default “Action aborted by hook” message. |
 
 For every hook command Lazygit sets the following environment variables to help
 with scripting:
@@ -1220,25 +1223,22 @@ with scripting:
 
 ```yaml
 actionHooks:
-  # First hook logs status information before and after committing.
+  # First hook logs before/after information and touches files so you can confirm execution easily.
   - context: files
     key: c
     before: |
-      {
-        echo "[HOOK] commit starting $(date)";
-        git status --short;
-      } >> /tmp/lazygit-hook.log
+      echo "[HOOK] commit starting $(date)" >> /tmp/lazygit-hook.log
+      touch /tmp/lazygit-actionhooks-before
     after: |
-      {
-        echo "[HOOK] commit finished $(date)";
-        git status --short;
-      } >> /tmp/lazygit-hook.log
+      echo "[HOOK] commit finished $(date)" >> /tmp/lazygit-hook.log
+      touch /tmp/lazygit-actionhooks-after
 
   # A second hook on the same action can be used for reminders or follow-up steps.
   - context: files
     key: c
     after: |
       echo "[HOOK] reminder: run tests after committing" >> /tmp/lazygit-hook.log
+      touch /tmp/lazygit-actionhooks-reminder
 
   # Hooks can also apply globally by omitting the context.
   - key: ctrl+p
@@ -1248,11 +1248,16 @@ actionHooks:
 
 Notes:
 
-- If any `before` command fails, Lazygit aborts the action and subsequent hooks
-  for that key.
+- If any `before` command fails (non-zero exit code), Lazygit aborts the action
+  and shows the error. `after` hook failures are surfaced as errors as well.
+- `abortOnSuccess: true` lets a hook cancel the action even when the command
+  succeeds. Use `abortMessage` to control the toast shown to the user.
 - `after` commands only run after Lazygit finishes all work (including async
   tasks such as pushes, fetches, or background jobs started by the handler).
 - When multiple hooks match the same action, Lazygit executes all `before`
   commands in order, then the action, then all `after` commands in order.
 - To chain Lazygit’s own actions, call the `lazygit` CLI inside a hook, or use
   custom keybindings that wrap these hooks.
+- Hooks run inside the repository root. You can verify the example above by
+  checking `/tmp/lazygit-actionhooks-before`, `/tmp/lazygit-actionhooks-after`,
+  `/tmp/lazygit-actionhooks-reminder`, and `/tmp/lazygit-hook.log`.
