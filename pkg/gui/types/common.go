@@ -84,6 +84,7 @@ type IGuiCommon interface {
 	// redrawn periodically. This allows the operation to be visualized with a
 	// spinning loader animation (e.g. when a branch is being pushed).
 	WithInlineStatus(item HasUrn, operation ItemOperation, contextKey ContextKey, f func(gocui.Task) error) error
+	RegisterActionHookCompletion() func(success bool) error
 
 	// returns the gocui Gui struct. There is a good chance you don't actually want to use
 	// this struct and instead want to use another method above

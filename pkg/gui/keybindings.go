@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/jesseduffield/gocui"
+	"github.com/jesseduffield/lazygit/pkg/gui/actionhooks"
 	"github.com/jesseduffield/lazygit/pkg/gui/context"
 	"github.com/jesseduffield/lazygit/pkg/gui/controllers/helpers"
 	"github.com/jesseduffield/lazygit/pkg/gui/keybindings"
@@ -526,6 +527,11 @@ func (gui *Gui) SetMouseKeybinding(binding *gocui.ViewMouseBinding) error {
 }
 
 func (gui *Gui) callKeybindingHandler(binding *types.Binding) error {
+	contextKey := ""
+	if currentContext := gui.c.Context().Current(); currentContext != nil {
+		contextKey = string(currentContext.GetKey())
+	}
+
 	if binding.GetDisabledReason != nil {
 		if disabledReason := binding.GetDisabledReason(); disabledReason != nil {
 			if disabledReason.AllowFurtherDispatching {
@@ -543,5 +549,40 @@ func (gui *Gui) callKeybindingHandler(binding *types.Binding) error {
 		}
 	}
 
-	return binding.Handler()
+	keyLabel := keybindings.LabelFromKey(binding.Key)
+
+	var execution *actionhooks.Execution
+	if gui.ActionHookManager != nil {
+		exec, err := gui.ActionHookManager.ExecuteBefore(contextKey, keyLabel)
+		if err != nil {
+			if abortErr, ok := err.(actionhooks.AbortError); ok {
+				gui.c.ErrorToast(abortErr.Error())
+				return nil
+			}
+			return err
+		}
+		execution = exec
+	}
+
+	gui.startActionHookExecution(execution)
+
+	if err := binding.Handler(); err != nil {
+		gui.abortActionHookExecution()
+		if abortErr, ok := err.(actionhooks.AbortError); ok {
+			gui.c.ErrorToast(abortErr.Error())
+			return nil
+		}
+		return err
+	}
+
+	if err := gui.finalizeActionHookExecution(); err != nil {
+		gui.abortActionHookExecution()
+		if abortErr, ok := err.(actionhooks.AbortError); ok {
+			gui.c.ErrorToast(abortErr.Error())
+			return nil
+		}
+		return err
+	}
+
+	return nil
 }

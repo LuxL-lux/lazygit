@@ -558,6 +558,9 @@ disableStartupPopups: false
 # See https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Command_Keybindings.md
 customCommands: []
 
+# Hooks to run before or after specific Lazygit actions
+actionHooks: []
+
 # See https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#custom-pull-request-urls
 services: {}
 
@@ -1188,3 +1191,68 @@ notARepository: 'skip'
 # to exit immediately if run outside of the Git repository
 notARepository: 'quit'
 ```
+## Action Hooks
+
+`actionHooks` let you run shell commands immediately before Lazygit handles a
+keybinding and/or after the action completes successfully. Each hook entry is
+scoped by the context (panel) and the key label, and hooks are evaluated in the
+order they appear in the config. Multiple hooks can target the same action—each
+`before` command runs first; once the Lazygit action and any asynchronous work
+finish, every non-empty `after` command runs.
+
+### Available Fields
+
+| Field    | Description |
+|----------|-------------|
+| `context` | Name of the context/panel where the hook applies. Use one of `status`, `files`, `worktrees`, `localBranches`, `remotes`, `remoteBranches`, `tags`, `commits`, `reflogCommits`, `subCommits`, `commitFiles`, `stash`, or `global`. Leave empty to match any context. |
+| `key`     | Key label that triggers the action (e.g. `c`, `P`, `enter`, `ctrl+p`). Use the same labels that appear in the keybinding config/cheatsheet. |
+| `before`  | Shell command executed before Lazygit runs the action. If the command exits with a non-zero status, Lazygit shows the error and the action is cancelled. |
+| `after`   | Shell command executed after the action completes successfully. Lazygit waits for any in-progress tasks (`WithInlineStatus`, `WithWaitingStatus`, subprocesses, etc.) to finish before running these commands. |
+
+For every hook command Lazygit sets the following environment variables to help
+with scripting:
+
+- `LAZYGIT_ACTION_CONTEXT`: the resolved context key (e.g. `files`)
+- `LAZYGIT_ACTION_KEY`: the key label that triggered the action (e.g. `c`)
+- `LAZYGIT_ACTION_PHASE`: either `before` or `after`
+
+### Example
+
+```yaml
+actionHooks:
+  # First hook logs status information before and after committing.
+  - context: files
+    key: c
+    before: |
+      {
+        echo "[HOOK] commit starting $(date)";
+        git status --short;
+      } >> /tmp/lazygit-hook.log
+    after: |
+      {
+        echo "[HOOK] commit finished $(date)";
+        git status --short;
+      } >> /tmp/lazygit-hook.log
+
+  # A second hook on the same action can be used for reminders or follow-up steps.
+  - context: files
+    key: c
+    after: |
+      echo "[HOOK] reminder: run tests after committing" >> /tmp/lazygit-hook.log
+
+  # Hooks can also apply globally by omitting the context.
+  - key: ctrl+p
+    before: |
+      echo "Pushing from $(pwd)" >> /tmp/lazygit-hook.log
+```
+
+Notes:
+
+- If any `before` command fails, Lazygit aborts the action and subsequent hooks
+  for that key.
+- `after` commands only run after Lazygit finishes all work (including async
+  tasks such as pushes, fetches, or background jobs started by the handler).
+- When multiple hooks match the same action, Lazygit executes all `before`
+  commands in order, then the action, then all `after` commands in order.
+- To chain Lazygit’s own actions, call the `lazygit` CLI inside a hook, or use
+  custom keybindings that wrap these hooks.

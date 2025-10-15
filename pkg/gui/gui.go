@@ -23,6 +23,7 @@ import (
 	"github.com/jesseduffield/lazygit/pkg/commands/oscommands"
 	"github.com/jesseduffield/lazygit/pkg/common"
 	"github.com/jesseduffield/lazygit/pkg/config"
+	"github.com/jesseduffield/lazygit/pkg/gui/actionhooks"
 	"github.com/jesseduffield/lazygit/pkg/gui/context"
 	"github.com/jesseduffield/lazygit/pkg/gui/controllers/helpers"
 	"github.com/jesseduffield/lazygit/pkg/gui/keybindings"
@@ -72,6 +73,8 @@ type Gui struct {
 	pagerConfig *config.PagerConfig
 
 	CustomCommandsClient *custom_commands.Client
+	ActionHookManager    *actionhooks.Manager
+	actionHookState      actionHookState
 
 	// this is a mapping of repos to gui states, so that we can restore the original
 	// gui state when returning from a subrepo.
@@ -723,6 +726,7 @@ func NewGui(
 	osCommand := oscommands.NewOSCommand(cmn, configurer, oscommands.GetPlatform(), guiIO)
 
 	gui.os = osCommand
+	gui.ActionHookManager = actionhooks.NewManager(func() *config.UserConfig { return gui.UserConfig() }, osCommand)
 
 	// storing this stuff on the gui for now to ease refactoring
 	// TODO: reset these controllers upon changing repos due to state changing

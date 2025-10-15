@@ -35,11 +35,29 @@ func (self *guiCommon) PostRefreshUpdate(context types.Context) {
 }
 
 func (self *guiCommon) RunSubprocessAndRefresh(cmdObj *oscommands.CmdObj) error {
-	return self.gui.runSubprocessWithSuspenseAndRefresh(cmdObj)
+	completion := self.gui.registerActionHookCompletion()
+	err := self.gui.runSubprocessWithSuspenseAndRefresh(cmdObj)
+	if completion != nil {
+		if err != nil {
+			_ = completion(false)
+		} else if compErr := completion(true); compErr != nil {
+			return compErr
+		}
+	}
+	return err
 }
 
 func (self *guiCommon) RunSubprocess(cmdObj *oscommands.CmdObj) (bool, error) {
-	return self.gui.runSubprocessWithSuspense(cmdObj)
+	completion := self.gui.registerActionHookCompletion()
+	success, err := self.gui.runSubprocessWithSuspense(cmdObj)
+	if completion != nil {
+		if err != nil || !success {
+			_ = completion(false)
+		} else if compErr := completion(true); compErr != nil {
+			return success, compErr
+		}
+	}
+	return success, err
 }
 
 func (self *guiCommon) Suspend() error {
@@ -178,6 +196,28 @@ func (self *guiCommon) InDemo() bool {
 }
 
 func (self *guiCommon) WithInlineStatus(item types.HasUrn, operation types.ItemOperation, contextKey types.ContextKey, f func(gocui.Task) error) error {
-	self.gui.helpers.InlineStatus.WithInlineStatus(helpers.InlineStatusOpts{Item: item, Operation: operation, ContextKey: contextKey}, f)
+	completion := self.gui.registerActionHookCompletion()
+	wrapped := f
+	if completion != nil {
+		wrapped = func(task gocui.Task) error {
+			err := f(task)
+			if err != nil {
+				_ = completion(false)
+				return err
+			}
+
+			if err := completion(true); err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+
+	self.gui.helpers.InlineStatus.WithInlineStatus(helpers.InlineStatusOpts{Item: item, Operation: operation, ContextKey: contextKey}, wrapped)
 	return nil
+}
+
+func (self *guiCommon) RegisterActionHookCompletion() func(success bool) error {
+	return self.gui.registerActionHookCompletion()
 }

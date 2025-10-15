@@ -146,6 +146,43 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "ActionHook": {
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Context key that identifies where the action occurs (e.g. 'files', 'localBranches', 'global'). Leave empty to match any context.",
+          "default": ""
+        },
+        "key": {
+          "type": "string",
+          "description": "The key that triggers the action (e.g. 'p', 'enter', 'ctrl+p'). Uses the same labels as keybinding configuration."
+        },
+        "before": {
+          "type": "string",
+          "description": "Command to run before the Lazygit action executes."
+        },
+        "after": {
+          "type": "string",
+          "description": "Command to run after the Lazygit action completes successfully."
+        },
+        "logOutput": {
+          "type": "boolean",
+          "description": "If true, hook output is logged to the command log; otherwise it is suppressed.",
+          "default": false
+        },
+        "abortOnSuccess": {
+          "type": "boolean",
+          "description": "If true, Lazygit aborts the action after the hook runs successfully.",
+          "default": false
+        },
+        "abortMessage": {
+          "type": "string",
+          "description": "Message to display when aborting the action after a hook succeeds."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "CustomCommandMenuOption": {
       "properties": {
         "name": {
@@ -1963,6 +2000,14 @@
           "type": "array",
           "uniqueItems": true,
           "description": "User-configured commands that can be invoked from within Lazygit\nSee https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Command_Keybindings.md"
+        },
+        "actionHooks": {
+          "items": {
+            "$ref": "#/$defs/ActionHook"
+          },
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Hooks to run before or after specific Lazygit actions"
         },
         "services": {
           "additionalProperties": {

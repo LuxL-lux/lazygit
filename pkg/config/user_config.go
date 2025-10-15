@@ -26,6 +26,8 @@ type UserConfig struct {
 	// User-configured commands that can be invoked from within Lazygit
 	// See https://github.com/jesseduffield/lazygit/blob/master/docs/Custom_Command_Keybindings.md
 	CustomCommands []CustomCommand `yaml:"customCommands" jsonschema:"uniqueItems=true"`
+	// Hooks to run before or after specific Lazygit actions
+	ActionHooks []ActionHook `yaml:"actionHooks" jsonschema:"uniqueItems=true"`
 	// See https://github.com/jesseduffield/lazygit/blob/master/docs/Config.md#custom-pull-request-urls
 	Services map[string]string `yaml:"services"`
 	// What to do when opening Lazygit outside of a git repo.
@@ -638,6 +640,23 @@ type OSConfig struct {
 
 type CustomCommandAfterHook struct {
 	CheckForConflicts bool `yaml:"checkForConflicts"`
+}
+
+type ActionHook struct {
+	// Context key that identifies where the action occurs (e.g. 'files', 'localBranches', 'global'). Leave blank to match any context.
+	Context string `yaml:"context"`
+	// The key that triggers the action (e.g. 'p', 'enter', 'ctrl+p'). Uses the same labels as keybinding configuration.
+	Key string `yaml:"key"`
+	// Command to run before the Lazygit action executes.
+	Before string `yaml:"before"`
+	// Command to run after the Lazygit action completes successfully.
+	After string `yaml:"after"`
+	// If true, hook output is logged to the command log; otherwise it is suppressed.
+	LogOutput bool `yaml:"logOutput"`
+	// If true, Lazygit aborts the action after this hook runs successfully.
+	AbortOnSuccess bool `yaml:"abortOnSuccess"`
+	// Message to show when aborting. If empty, a default message is used.
+	AbortMessage string `yaml:"abortMessage"`
 }
 
 type CustomCommand struct {

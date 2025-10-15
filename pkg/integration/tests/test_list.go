@@ -17,6 +17,7 @@ import (
 	"github.com/jesseduffield/lazygit/pkg/integration/tests/filter_and_search"
 	"github.com/jesseduffield/lazygit/pkg/integration/tests/filter_by_author"
 	"github.com/jesseduffield/lazygit/pkg/integration/tests/filter_by_path"
+	"github.com/jesseduffield/lazygit/pkg/integration/tests/hooks"
 	"github.com/jesseduffield/lazygit/pkg/integration/tests/interactive_rebase"
 	"github.com/jesseduffield/lazygit/pkg/integration/tests/misc"
 	"github.com/jesseduffield/lazygit/pkg/integration/tests/patch_building"
@@ -249,6 +250,7 @@ var tests = []*components.IntegrationTest{
 	filter_by_path.SelectFilteredFileWhenEnteringCommitNoRootItem,
 	filter_by_path.ShowDiffsForRenamedFile,
 	filter_by_path.TypeFile,
+	hooks.CommitHooks,
 	interactive_rebase.AdvancedInteractiveRebase,
 	interactive_rebase.AmendCommitWithConflict,
 	interactive_rebase.AmendFirstCommit,

@@ -59,8 +59,26 @@ func (self appStatusHelperTask) Continue() {
 
 // withWaitingStatus wraps a function and shows a waiting status while the function is still executing
 func (self *AppStatusHelper) WithWaitingStatus(message string, f func(gocui.Task) error) {
+	completion := self.c.RegisterActionHookCompletion()
 	self.c.OnWorker(func(task gocui.Task) error {
-		return self.WithWaitingStatusImpl(message, f, task)
+		wrapped := f
+		if completion != nil {
+			wrapped = func(task gocui.Task) error {
+				err := f(task)
+				if err != nil {
+					_ = completion(false)
+					return err
+				}
+
+				if err := completion(true); err != nil {
+					return err
+				}
+
+				return nil
+			}
+		}
+
+		return self.WithWaitingStatusImpl(message, wrapped, task)
 	})
 }
 
@@ -71,12 +89,21 @@ func (self *AppStatusHelper) WithWaitingStatusImpl(message string, f func(gocui.
 }
 
 func (self *AppStatusHelper) WithWaitingStatusSync(message string, f func() error) error {
+	completion := self.c.RegisterActionHookCompletion()
 	return self.statusMgr().WithWaitingStatus(message, func() {}, func(*status.WaitingStatusHandle) error {
 		stop := make(chan struct{})
 		defer func() { close(stop) }()
 		self.renderAppStatusSync(stop)
 
-		return f()
+		err := f()
+		if completion == nil {
+			return err
+		}
+		if err != nil {
+			_ = completion(false)
+			return err
+		}
+		return completion(true)
 	})
 }
 
